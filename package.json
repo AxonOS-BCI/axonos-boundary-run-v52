@@ -1,0 +1,14 @@
+{
+  "name": "axonos-boundary-run-v52",
+  "version": "52.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node qa/boundary-run-static-smoke-v52.mjs",
+    "audit": "python3 tools/boundary_run_audit_v52.py",
+    "build": "bash scripts/build_web.sh dist",
+    "verify:no-sw": "bash scripts/verify_no_sw.sh",
+    "verify:donations": "bash scripts/verify_donation_address.sh",
+    "repro": "bash scripts/reproducibility_check.sh"
+  }
+}

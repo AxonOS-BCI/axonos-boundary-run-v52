@@ -1,0 +1,9 @@
+{
+  "name": "AxonOS Boundary Run v52",
+  "short_name": "Boundary Run v52",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "description": "Zero-telemetry cognitive privacy simulator."
+}

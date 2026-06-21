@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#05070a" />
+  <meta name="description" content="AxonOS Boundary Run v52 — cognitive privacy simulator and deterministic replay proof game." />
+  <title>AxonOS Boundary Run v52 — The Sovereign Signal</title>
+  <link rel="manifest" href="src/manifest.json" />
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <main class="shell" aria-label="AxonOS Boundary Run v52 game shell">
+    <section class="hero" aria-labelledby="title">
+      <p class="eyebrow">AxonOS Foundation Standard</p>
+      <h1 id="title">Boundary Run v52</h1>
+      <p class="subtitle">The Sovereign Signal — cognitive privacy, consent boundaries, deterministic replay.</p>
+    </section>
+
+    <section class="hud" aria-label="Game status">
+      <div><span>Integrity</span><strong id="integrity">100%</strong></div>
+      <div><span>Consent</span><strong id="consent">Granted</strong></div>
+      <div><span>Weather</span><strong id="weather">Clear</strong></div>
+      <div><span>Proof</span><strong id="proof">pending</strong></div>
+    </section>
+
+    <section class="stage-wrap">
+      <canvas id="game" width="960" height="540" role="img" aria-label="Boundary Run playable canvas"></canvas>
+      <div id="live" class="sr-only" aria-live="polite"></div>
+    </section>
+
+    <section class="controls" aria-label="Controls">
+      <button id="start">Start / Restart</button>
+      <button id="pause">Pause</button>
+      <button id="export">Export Replay Proof</button>
+      <button id="colorblind">Colorblind Mode</button>
+    </section>
+
+    <section class="manual" aria-label="AxonOS manual">
+      <h2>Codex</h2>
+      <p id="codex">Complete the first consent gate to unlock the Consent State Machine entry.</p>
+      <details>
+        <summary>Keyboard</summary>
+        <p>A/D or arrows move. W/↑/Space jumps. S/↓ ducks. R revokes consent. E requests resume after suspension. P pauses.</p>
+      </details>
+    </section>
+  </main>
+  <script src="src/game.js"></script>
+</body>
+</html>
