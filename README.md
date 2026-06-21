@@ -81,7 +81,26 @@ This copies the static build into `dist/` and computes `SOURCE_MANIFEST.sha256`.
 
 ## GitHub Pages
 
-Set GitHub Pages to deploy from `main` / root, or use the included Actions workflow artifact.
+Set GitHub Pages to deploy with GitHub Actions. The included Pages workflow builds `dist/` and deploys the static browser game.
+
+## Release
+
+Current release: **v52.0.0 — The Sovereign Signal**.
+
+Release package generation:
+
+```bash
+bash scripts/package_release.sh
+```
+
+Publish/update the GitHub Release:
+
+```bash
+bash scripts/create_github_release_v52.sh
+```
+
+Release notes: [`RELEASE_NOTES_v52.0.0.md`](RELEASE_NOTES_v52.0.0.md).
+
 
 ## License
 

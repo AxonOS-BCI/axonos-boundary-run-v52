@@ -9,6 +9,8 @@
     "build": "bash scripts/build_web.sh dist",
     "verify:no-sw": "bash scripts/verify_no_sw.sh",
     "verify:donations": "bash scripts/verify_donation_address.sh",
-    "repro": "bash scripts/reproducibility_check.sh"
+    "repro": "bash scripts/reproducibility_check.sh",
+    "package:release": "bash scripts/package_release.sh",
+    "release:github": "bash scripts/create_github_release_v52.sh"
   }
 }

@@ -1,0 +1,37 @@
+name: Boundary Run v52 CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  static-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: node qa/boundary-run-static-smoke-v52.mjs
+      - run: python3 tools/boundary_run_audit_v52.py
+      - run: bash scripts/verify_no_sw.sh
+      - run: bash scripts/verify_donation_address.sh
+      - run: bash scripts/reproducibility_check.sh
+      - run: bash scripts/build_web.sh dist
+      - run: bash scripts/package_release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boundary-run-v52-dist
+          path: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boundary-run-v52-release-assets
+          path: release-assets
