@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Created by Denis Yermakou, Founder & CEO of AxonOS.
 set -euo pipefail
 
 REPO_URL="https://github.com/AxonOS-BCI/axonos-boundary-run-v52.git"

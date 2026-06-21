@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Created by Denis Yermakou, Founder & CEO of AxonOS.
 import argparse, json, hashlib, sys
 parser = argparse.ArgumentParser(description="Verify a Boundary Run v52 replay proof export.")
 parser.add_argument("proof_json")

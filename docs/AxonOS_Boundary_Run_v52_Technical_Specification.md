@@ -2,6 +2,7 @@
 ## "The Sovereign Signal" — High-End AxonOS Foundation Standard Edition
 
 **Document Version:** 1.0.0-FINAL  
+**Creator / Founder:** Denis Yermakou  
 **Classification:** Open Specification — CC-BY-SA-4.0  
 **Date:** 2026-06-21  
 **Target Release:** v52.0.0 (Foundation Standard)  
@@ -652,3 +653,8 @@ Create:
 **Document End.**
 
 *"Protect the choice. Protect the person."*
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

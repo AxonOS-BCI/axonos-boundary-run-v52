@@ -1,3 +1,4 @@
+# Attribution: Denis Yermakou
 name: Boundary Run v52 CI
 
 on:
@@ -24,6 +25,7 @@ jobs:
       - run: python3 tools/boundary_run_audit_v52.py
       - run: bash scripts/verify_no_sw.sh
       - run: bash scripts/verify_donation_address.sh
+      - run: bash scripts/verify_attribution.sh
       - run: bash scripts/reproducibility_check.sh
       - run: bash scripts/build_web.sh dist
       - run: bash scripts/package_release.sh

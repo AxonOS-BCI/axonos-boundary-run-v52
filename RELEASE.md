@@ -8,3 +8,8 @@ Run:
 bash scripts/package_release.sh
 bash scripts/create_github_release_v52.sh
 ```
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

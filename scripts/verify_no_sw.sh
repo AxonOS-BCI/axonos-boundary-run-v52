@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Created by Denis Yermakou, Founder & CEO of AxonOS.
 set -euo pipefail
 TARGETS=(index.html src)
 for target in "${TARGETS[@]}"; do

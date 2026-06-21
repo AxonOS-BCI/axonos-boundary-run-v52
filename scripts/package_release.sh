@@ -23,6 +23,7 @@ node qa/boundary-run-static-smoke-v52.mjs
 python3 tools/boundary_run_audit_v52.py
 bash scripts/verify_no_sw.sh
 bash scripts/verify_donation_address.sh
+bash scripts/verify_attribution.sh
 bash scripts/reproducibility_check.sh
 bash scripts/build_web.sh dist
 

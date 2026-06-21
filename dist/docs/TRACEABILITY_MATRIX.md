@@ -10,3 +10,8 @@
 | Sealed Vault | Privacy vault boundary | Integrity regeneration | `src/game.js` |
 | Quarantine/Suspension | Safe failure state | Consent reduction | `src/game.js` |
 | Replay Proof | Deterministic audit trace | SHA-256 proof payload | `src/game.js`, `tools/boundary_run_verify_v3.py` |
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

@@ -4,6 +4,10 @@
 
 ### Added
 
+- README direct launch link for the playable GitHub Pages build.
+- Repository-wide attribution metadata for Denis Yermakou.
+- Attribution verification script and CI check.
+
 - Initial public Foundation Standard release for AxonOS Boundary Run v52.
 - Static playable browser game implementation.
 - Ari safe-intent courier gameplay loop.
@@ -39,3 +43,8 @@
 - Current runtime is static JavaScript/Canvas Foundation implementation.
 - Final Rust/WASM deterministic simulation core remains a roadmap target.
 - Formal Kani/fuzz/WCRT proof chain is not claimed complete in this Foundation release.
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

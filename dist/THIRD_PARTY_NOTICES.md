@@ -9,3 +9,8 @@ Browser APIs used:
 - DOM APIs
 
 No external CDN assets are used.
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

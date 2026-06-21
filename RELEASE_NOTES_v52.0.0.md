@@ -5,6 +5,7 @@
 **Repository:** `AxonOS-BCI/axonos-boundary-run-v52`  
 **Release class:** Public educational game / cognitive privacy simulator  
 **License:** `AGPL-3.0-only OR AxonOS Commercial License`
+**Creator / Founder / Maintainer:** Denis Yermakou
 
 > Protect the choice. Protect the person.
 
@@ -17,6 +18,9 @@ This release is intentionally conservative: it does not claim to be the final Ru
 ## What this release contains
 
 ### Playable Foundation build
+
+- README direct launch link to GitHub Pages: https://axonos-bci.github.io/axonos-boundary-run-v52/
+- Project attribution metadata normalized to Denis Yermakou across README, package metadata, web metadata, release notes, and documentation.
 
 - Static HTML5 Canvas game loop.
 - Ari safe-intent courier mechanic.
@@ -124,3 +128,8 @@ Recommended GitHub Release title:
 ```text
 AxonOS Boundary Run v52.0.0 — The Sovereign Signal
 ```
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

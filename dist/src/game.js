@@ -1,3 +1,8 @@
+/*
+ * AxonOS Boundary Run v52 — The Sovereign Signal
+ * Created by Denis Yermakou, Founder & CEO of AxonOS.
+ * Copyright © 2026 Denis Yermakou / AxonOS.
+ */
 (() => {
   "use strict";
 

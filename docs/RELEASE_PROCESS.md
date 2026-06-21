@@ -53,3 +53,8 @@ v52.0.0
 ## GitHub Pages
 
 The Pages workflow builds `dist/` and deploys it as a static site. In repository settings, GitHub Pages should be configured to use GitHub Actions.
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

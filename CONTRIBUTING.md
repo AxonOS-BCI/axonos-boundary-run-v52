@@ -11,3 +11,8 @@
 ## Evidence discipline
 
 Every gameplay mechanic should map to a documented AxonOS concept, RFC, or safety guarantee.
+
+
+## Attribution
+
+Created by Denis Yermakou, Founder & CEO of AxonOS.

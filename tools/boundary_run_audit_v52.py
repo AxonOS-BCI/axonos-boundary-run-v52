@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Created by Denis Yermakou, Founder & CEO of AxonOS.
 from pathlib import Path
 import sys, re
 root = Path(__file__).resolve().parents[1]
@@ -19,7 +20,7 @@ if violations:
     print("FAIL: forbidden network/security patterns detected")
     for item in violations: print(" -", item[0], item[1])
     sys.exit(1)
-required = ["README.md", "SECURITY.md", "DONATIONS.md", "docs/TRACEABILITY_MATRIX.md", "docs/AxonOS_Boundary_Run_v52_Technical_Specification.md"]
+required = ["README.md", "ATTRIBUTION.md", "SECURITY.md", "DONATIONS.md", "docs/TRACEABILITY_MATRIX.md", "docs/AxonOS_Boundary_Run_v52_Technical_Specification.md"]
 missing = [p for p in required if not (root / p).exists()]
 if missing:
     print("FAIL: missing required files", missing)
