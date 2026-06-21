@@ -98,17 +98,27 @@
   }
 
   async function digest(text) {
-    const data = new TextEncoder().encode(text);
+    if (!globalThis.crypto || !crypto.subtle || typeof crypto.subtle.digest !== "function") {
+      throw new Error("WebCrypto SHA-256 unavailable. Use HTTPS or a modern browser.");
+    }
+    const data = new TextEncoder().encode(String(text));
     const h = await crypto.subtle.digest("SHA-256", data);
     return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2,"0")).join("");
   }
 
   async function finalizeProof() {
-    const payload = JSON.stringify({seed, frame, score: state.score, integrity: state.integrity, consent: state.consent, inputLog});
-    const hash = await digest(payload);
-    state.proof = hash.slice(0, 16);
-    ui.proof.textContent = state.proof;
-    return {seed, frames: frame, score: state.score, consent: state.consent, proof: hash, inputLog};
+    try {
+      const payload = JSON.stringify({seed, frame, score: state.score, integrity: state.integrity, consent: state.consent, inputLog});
+      const hash = await digest(payload);
+      state.proof = hash.slice(0, 16);
+      ui.proof.textContent = state.proof;
+      return {seed, frames: frame, score: state.score, consent: state.consent, proof: hash, inputLog};
+    } catch (e) {
+      state.proof = "unavailable";
+      ui.proof.textContent = state.proof;
+      announce("Proof unavailable: " + e.message);
+      return {seed, frames: frame, score: state.score, consent: state.consent, proof: "unavailable", error: e.message, inputLog};
+    }
   }
 
   function announce(msg) {
@@ -156,6 +166,13 @@
     if (state.y > FLOOR * Q) { state.y = FLOOR * Q; state.vy = 0; }
     state.x += state.vx;
     state.x = Math.max(38 * Q, Math.min(330 * Q, state.x));
+    if (!Number.isFinite(state.x) || !Number.isFinite(state.y) || !Number.isFinite(state.vx) || !Number.isFinite(state.vy)) {
+      state.gameOver = true;
+      state.consent = "Withdrawn";
+      announce("Integrity violation: non-finite state detected. Consent withdrawn.");
+      finalizeProof();
+      return;
+    }
 
     const worldSpeed = 3.25 + Math.min(3.0, frame / 3600);
     state.distance += worldSpeed;
@@ -289,14 +306,54 @@
   document.getElementById("pause").addEventListener("click", () => paused = !paused);
   document.getElementById("colorblind").addEventListener("click", () => { colorblind = !colorblind; document.body.classList.toggle("colorblind", colorblind); });
   document.getElementById("export").addEventListener("click", async () => {
-    const proof = await finalizeProof();
-    const blob = new Blob([JSON.stringify(proof, null, 2)], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `boundary-run-v52-proof-${proof.proof.slice(0,12)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    try {
+      const proof = await finalizeProof();
+      if (!proof || !proof.proof) {
+        announce("Proof export failed: invalid proof data.");
+        return;
+      }
+      const safeHash = String(proof.proof).replace(/[^a-f0-9]/gi, "").slice(0, 12) || "unavailable";
+      const filename = `boundary-run-v52-proof-${safeHash}.json`;
+      const blob = new Blob([JSON.stringify(proof, null, 2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      announce("Proof exported: " + filename);
+    } catch (e) {
+      console.error("Export failed:", e);
+      announce("Proof export failed: " + e.message);
+    }
   });
+
+  const touchStage = document.querySelector(".stage-wrap") || canvas;
+  function clearTouchKeys() {
+    keys.delete("ArrowLeft");
+    keys.delete("ArrowRight");
+    keys.delete("ArrowUp");
+    keys.delete("ArrowDown");
+  }
+  function applyTouchControls(e) {
+    if (!e.touches || e.touches.length === 0) return;
+    e.preventDefault();
+    clearTouchKeys();
+    const rect = touchStage.getBoundingClientRect();
+    for (const touch of e.touches) {
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      if (x < rect.width * 0.34) keys.add("ArrowLeft");
+      else if (x > rect.width * 0.66) keys.add("ArrowRight");
+      if (y < rect.height * 0.42) keys.add("ArrowUp");
+      else if (y > rect.height * 0.72) keys.add("ArrowDown");
+    }
+  }
+  touchStage.addEventListener("touchstart", applyTouchControls, {passive:false});
+  touchStage.addEventListener("touchmove", applyTouchControls, {passive:false});
+  touchStage.addEventListener("touchend", (e) => { e.preventDefault(); clearTouchKeys(); }, {passive:false});
+  touchStage.addEventListener("touchcancel", () => clearTouchKeys());
 
   reset();
   loop();

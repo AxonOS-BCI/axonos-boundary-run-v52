@@ -1,0 +1,46 @@
+# Attribution: Denis Yermakou
+name: Boundary Run v52 Pages Branch Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-branch-deploy
+  cancel-in-progress: true
+
+jobs:
+  publish-gh-pages:
+    name: Publish static build to gh-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build static site
+        run: |
+          bash scripts/build_web.sh dist
+          touch dist/.nojekyll
+          test -f dist/index.html
+          grep -R "DMwHAhqVNWf7dyEznukxCufNS5rjuP5MTp" README.md DONATIONS.md index.html dist/index.html
+      - name: Publish gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          commit_message: "deploy(pages): publish Boundary Run v52 static build"

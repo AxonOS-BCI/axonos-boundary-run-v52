@@ -1,0 +1,92 @@
+# Attribution: Denis Yermakou
+name: Boundary Run v52 Pro CI — 57 Gates
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pro-ci-57-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pro-gate:
+    name: Gate ${{ matrix.id }} — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { id: "01", name: "README launch link", gate: "readme_launch" }
+          - { id: "02", name: "Denis Yermakou attribution", gate: "attribution" }
+          - { id: "03", name: "Donation wallet integrity", gate: "donation_wallet" }
+          - { id: "04", name: "No service worker", gate: "no_service_worker" }
+          - { id: "05", name: "No telemetry primitives", gate: "no_telemetry" }
+          - { id: "06", name: "No external CDN", gate: "no_external_cdn" }
+          - { id: "07", name: "CSP present", gate: "csp_present" }
+          - { id: "08", name: "Referrer policy", gate: "referrer_policy" }
+          - { id: "09", name: "Safe release script", gate: "safe_release_script" }
+          - { id: "10", name: "No force tag", gate: "no_force_tag" }
+          - { id: "11", name: "No auto install", gate: "no_auto_install" }
+          - { id: "12", name: "Full AGPL text", gate: "full_agpl" }
+          - { id: "13", name: "Proof filename sanitation", gate: "proof_sanitize" }
+          - { id: "14", name: "Crypto error handling", gate: "crypto_error" }
+          - { id: "15", name: "NaN guard", gate: "nan_guard" }
+          - { id: "16", name: "Touch controls", gate: "touch_controls" }
+          - { id: "17", name: "Foundation status", gate: "foundation_status" }
+          - { id: "18", name: "Version file", gate: "version_file" }
+          - { id: "19", name: "License files", gate: "license_files" }
+          - { id: "20", name: "Security policy", gate: "security_policy" }
+          - { id: "21", name: "Governance doc", gate: "governance_doc" }
+          - { id: "22", name: "Contributing doc", gate: "contributing_doc" }
+          - { id: "23", name: "Code of conduct", gate: "code_of_conduct" }
+          - { id: "24", name: "Trademark policy", gate: "trademark_policy" }
+          - { id: "25", name: "Third party notices", gate: "third_party_notices" }
+          - { id: "26", name: "Traceability matrix", gate: "traceability_matrix" }
+          - { id: "27", name: "Technical specification", gate: "technical_spec" }
+          - { id: "28", name: "Release notes", gate: "release_notes" }
+          - { id: "29", name: "Changelog", gate: "changelog" }
+          - { id: "30", name: "Source manifest", gate: "source_manifest" }
+          - { id: "31", name: "Build script", gate: "build_script" }
+          - { id: "32", name: "Audit script", gate: "audit_script" }
+          - { id: "33", name: "Smoke script", gate: "smoke_script" }
+          - { id: "34", name: "Donation verifier", gate: "donation_verifier" }
+          - { id: "35", name: "Attribution verifier", gate: "attribution_verifier" }
+          - { id: "36", name: "No SW verifier", gate: "no_sw_verifier" }
+          - { id: "37", name: "Reproducibility script", gate: "repro_script" }
+          - { id: "38", name: "Package release script", gate: "package_script" }
+          - { id: "39", name: "Dependabot config", gate: "dependabot" }
+          - { id: "40", name: "Pages branch deploy workflow", gate: "pages_branch_workflow" }
+          - { id: "41", name: "Old deploy-pages workflow removed", gate: "old_pages_removed" }
+          - { id: "42", name: "Workflow YAML shape", gate: "workflow_yaml_shape" }
+          - { id: "43", name: "Release tag naming", gate: "release_tag" }
+          - { id: "44", name: "Launch URL consistency", gate: "launch_url" }
+          - { id: "45", name: "Zero backend claim", gate: "zero_backend_claim" }
+          - { id: "46", name: "Privacy claim", gate: "privacy_claim" }
+          - { id: "47", name: "Consent mechanics", gate: "consent_mechanics" }
+          - { id: "48", name: "Replay proof mechanics", gate: "replay_proof" }
+          - { id: "49", name: "Keyboard controls", gate: "keyboard_controls" }
+          - { id: "50", name: "Canvas runtime", gate: "canvas_runtime" }
+          - { id: "51", name: "Mobile viewport", gate: "mobile_viewport" }
+          - { id: "52", name: "Accessibility labels", gate: "accessibility" }
+          - { id: "53", name: "Security contact", gate: "security_contact" }
+          - { id: "54", name: "Commercial license", gate: "commercial_license" }
+          - { id: "55", name: "No hardcoded secrets", gate: "no_secrets" }
+          - { id: "56", name: "Static audit", gate: "static_audit" }
+          - { id: "57", name: "Static smoke", gate: "static_smoke" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run pro gate
+        run: python3 tools/pro_ci_gate.py "${{ matrix.gate }}"

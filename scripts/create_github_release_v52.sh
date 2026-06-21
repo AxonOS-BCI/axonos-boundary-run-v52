@@ -9,20 +9,23 @@ TITLE="AxonOS Boundary Run ${VERSION} — The Sovereign Signal"
 NOTES="RELEASE_NOTES_v52.0.0.md"
 
 if ! command -v gh >/dev/null 2>&1; then
-  echo "GitHub CLI 'gh' is not installed."
-  if command -v pkg >/dev/null 2>&1; then
-    pkg install -y gh || true
-  fi
-fi
-
-if ! command -v gh >/dev/null 2>&1; then
-  echo "FAIL: install GitHub CLI first: pkg install gh"
+  echo "FAIL: GitHub CLI 'gh' is required. Install it manually, then run: gh auth login"
   exit 1
 fi
 
 if ! gh auth status >/dev/null 2>&1; then
-  echo "GitHub CLI is not authenticated. Login now."
-  gh auth login
+  echo "FAIL: GitHub CLI is not authenticated. Run: gh auth login"
+  exit 1
+fi
+
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  echo "ERROR: Tag $TAG already exists locally. Refusing to overwrite release history."
+  exit 1
+fi
+
+if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+  echo "ERROR: Tag $TAG already exists on remote. Refusing to overwrite release history."
+  exit 1
 fi
 
 bash scripts/package_release.sh
@@ -31,8 +34,8 @@ git add .
 git commit -m "release: AxonOS Boundary Run ${TAG} Foundation Standard" || echo "No source changes to commit"
 git push -u origin main
 
-git tag -fa "$TAG" -m "AxonOS Boundary Run ${TAG} — Foundation Standard"
-git push -f origin "$TAG"
+git tag -a "$TAG" -m "AxonOS Boundary Run ${TAG} — Foundation Standard"
+git push origin "$TAG"
 
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
   gh release upload "$TAG" release-assets/* --repo "$REPO" --clobber

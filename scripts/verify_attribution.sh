@@ -8,21 +8,9 @@ FILES=(
   package.json
   index.html
   src/game.js
-  src/styles.css
   src/manifest.json
-  RELEASE_NOTES_v52.0.0.md
-  CHANGELOG.md
   LICENSE-AGPL
-  LICENSE-COMMERCIAL
-  SECURITY.md
-  DONATIONS.md
-  GOVERNANCE.md
-  CONTRIBUTING.md
-  TRADEMARK.md
-  THIRD_PARTY_NOTICES.md
-  docs/AxonOS_Boundary_Run_v52_Technical_Specification.md
-  docs/TRACEABILITY_MATRIX.md
-  docs/RELEASE_PROCESS.md
+  RELEASE_NOTES_v52.0.0.md
 )
 
 for f in "${FILES[@]}"; do

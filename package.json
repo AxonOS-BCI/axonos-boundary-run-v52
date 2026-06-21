@@ -14,7 +14,7 @@
     "release:github": "bash scripts/create_github_release_v52.sh",
     "verify:attribution": "bash scripts/verify_attribution.sh"
   },
-  "description": "AxonOS Boundary Run v52 \u2014 zero-telemetry cognitive privacy simulator created by Denis Yermakou.",
+  "description": "AxonOS Boundary Run v52 — zero-telemetry cognitive privacy simulator created by Denis Yermakou.",
   "author": {
     "name": "Denis Yermakou",
     "email": "wiser1707@gmail.com",

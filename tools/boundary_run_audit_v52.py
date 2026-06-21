@@ -26,3 +26,22 @@ if missing:
     print("FAIL: missing required files", missing)
     sys.exit(1)
 print("OK: Boundary Run v52 static audit passed")
+
+
+# Hardening assertions added for v52 release blockers.
+def _hardening_assertions():
+    from pathlib import Path
+    idx = Path("index.html").read_text(encoding="utf-8", errors="replace")
+    game = Path("src/game.js").read_text(encoding="utf-8", errors="replace")
+    rel = Path("scripts/create_github_release_v52.sh").read_text(encoding="utf-8", errors="replace")
+    lic = Path("LICENSE-AGPL").read_text(encoding="utf-8", errors="replace")
+    assert "Content-Security-Policy" in idx
+    assert "no-referrer" in idx
+    assert "replace(/[^a-f0-9]/gi" in game
+    assert "WebCrypto SHA-256 unavailable" in game
+    assert "touchstart" in game
+    assert "git tag -fa" not in rel
+    assert "pkg install" not in rel
+    assert "GNU AFFERO GENERAL PUBLIC LICENSE" in lic
+
+_hardening_assertions()

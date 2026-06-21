@@ -12,6 +12,10 @@
 
 ---
 
+## 0. IMPLEMENTATION STATUS
+
+v52.0.0 Foundation Standard is a static JavaScript browser implementation intended to publish the game, zero-telemetry posture, consent-state mechanics, replay-proof export, and documentation scaffold. The target architecture remains Rust → WebAssembly with ChaCha20 RNG, strict Q16.16 fixed-point simulation, and Merkle replay proofs. This distinction is explicit to prevent overclaiming implementation maturity.
+
 ## 1. EXECUTIVE SUMMARY
 
 Boundary Run v52 is the definitive educational game encapsulating the full architectural depth of the AxonOS brain-computer interface operating system. It is not merely a game—it is an interactive, byte-for-byte reproducible specification of cognitive privacy, consent architecture, real-time safety guarantees, and structural privacy-by-design.
