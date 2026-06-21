@@ -1,16 +1,13 @@
 # Donations
 
-Dogecoin:
+Support AxonOS Boundary Run v52 directly.
 
 ```text
-DMwHAhqVNWf7dyEznukxCufNS5rjuP5MTp
+Dogecoin: DMwHAhqVNWf7dyEznukxCufNS5rjuP5MTp
 ```
 
-This address is intentionally checked by CI to prevent substitution attacks.
-
+This address is intentionally stored directly in the repository and verified by CI to prevent substitution attacks.
 
 ## Attribution
 
 Created by Denis Yermakou, Founder & CEO of AxonOS.
-
-**Maintainer attribution:** Denis Yermakou, Founder & CEO of AxonOS.

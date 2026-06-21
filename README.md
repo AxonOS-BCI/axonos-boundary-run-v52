@@ -14,15 +14,21 @@
 
 ## Launch directly from README
 
-Click the launch link below. After GitHub Pages deploys from the included workflow, the game opens directly in the browser without backend, telemetry, login, or installation.
-
-### [▶ Play AxonOS Boundary Run v52](https://axonos-bci.github.io/axonos-boundary-run-v52/)
+[▶ Play AxonOS Boundary Run v52](https://axonos-bci.github.io/axonos-boundary-run-v52/)
 
 Fallback local launch:
 
 ```bash
 python3 -m http.server 8080
 # open http://127.0.0.1:8080
+```
+
+## Direct Donation Wallet
+
+Support AxonOS Boundary Run v52 directly. The wallet is stored directly in this repository and verified by CI.
+
+```text
+Dogecoin: DMwHAhqVNWf7dyEznukxCufNS5rjuP5MTp
 ```
 
 ## Attribution
