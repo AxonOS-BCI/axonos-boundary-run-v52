@@ -38,7 +38,8 @@ def make_hazard(s, x):
     w = 30 + math.floor(rnd(s) * 22)
     h = 34 + math.floor(rnd(s) * 26)
     y = FIELD_TOP + 8 + math.floor(rnd(s) * (FIELD_BOT - FIELD_TOP - h - 16))
-    return {"x": float(x), "y": y, "w": w, "h": h, "type": typ, "hit": False, "passed": False}
+    vy = (rnd(s) * 2 - 1) * 0.9
+    return {"x": float(x), "y": float(y), "w": w, "h": h, "type": typ, "vy": vy, "hit": False, "passed": False}
 
 def new_sim(seed):
     s = {"seed": seed & M32, "rng": seed & M32, "tick": 0,
@@ -95,6 +96,11 @@ def step_sim(s, mask):
         s["score"] += speed * 0.10 * s["mult"]
     for h in s["hazards"]:
         h["x"] -= speed
+        h["y"] += h["vy"]
+        if h["y"] < FIELD_TOP + 4:
+            h["y"] = FIELD_TOP + 4; h["vy"] = -h["vy"]
+        elif h["y"] > FIELD_BOT - h["h"] - 4:
+            h["y"] = FIELD_BOT - h["h"] - 4; h["vy"] = -h["vy"]
         if not h["hit"] and aabb(s["x"], s["y"], h):
             h["hit"] = True
             if h["type"] == "vault":
