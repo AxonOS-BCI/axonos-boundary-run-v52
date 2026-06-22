@@ -85,7 +85,7 @@ You are the **Sovereign Signal** moving through the Neural Boundary Field. Kibo 
 ## How to play
 
 - **Move (keyboard):** `← → ↑ ↓` or `WASD` (A/D, W/S) — free 2-D movement, no gravity, so you can hold any position.
-- **Dash:** `Shift` or `K` — a short burst with brief invulnerability to phase through danger; on a cooldown. On touch, two-finger tap.
+- **Dash:** `Shift` or `K` (two-finger tap on touch) — a burst with brief invulnerability. Dash *through* a red Raw or purple Artifact to **purge** it for bonus points and keep your combo; on a cooldown.
 - **Move (touch):** drag anywhere on the play area; the signal follows your finger.
 - **Goal:** dodge red Raw-Signal spikes (−18 integrity) and purple Artifacts (−7); slip past closely for a near-miss bonus. Collect gold Vaults for integrity, score and combo streaks. Gray Gates suspend consent for ~3 s. Hazards drift vertically, and periodic **surge waves** raise the pressure.
 - **Bands:** ride the green **Audit** band to restore integrity; the amber **Fast** band doubles score but slowly drains it.

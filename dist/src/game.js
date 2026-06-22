@@ -7,16 +7,17 @@
  * Determinism contract
  * --------------------
  * Gameplay advances on a FIXED 60 Hz timestep, decoupled from the display
- * refresh rate. All gameplay randomness flows through one seeded RNG whose state
- * lives in the sim. The deterministic path uses only exact IEEE-754 arithmetic
- * (no transcendental functions), so the same (seed, inputLog) reproduces the
- * same canonical SHA-256 hash in any language. finalizeProof() records the input
- * log and re-simulates it on export to confirm the hash (`verified`).
+ * refresh rate. The simulation uses one seeded RNG (sim.rng) and only exact
+ * IEEE-754 arithmetic — no transcendental functions — so the same
+ * (seed, inputLog) reproduces the same canonical SHA-256 hash in any language.
+ * finalizeProof() re-simulates the recorded input log on export to confirm the
+ * hash (`verified`).
  *
- * Everything in the render layer (glow, parallax, particles, shimmer) is
- * cosmetic. It never reads or writes sim state and never advances the gameplay
- * RNG, so it cannot affect the deterministic hash. Cosmetic code may use Math.sin
- * etc. freely; the sim never does.
+ * The render layer is cosmetic. It never reads or writes sim state and never
+ * advances sim.rng, so it cannot affect the hash. Cosmetic randomness (particle
+ * jitter, the star field) flows through a SEPARATE cosmetic RNG (cos) — there is
+ * no Math.random anywhere — and cosmetic motion may use Math.sin/atan2 freely;
+ * the simulation never does.
  */
 (() => {
   "use strict";
@@ -27,8 +28,8 @@
   const AUDIT = { y0: 318, y1: 398 };   // restore band (heal while Granted)
   const FAST  = { y0: 92,  y1: 172 };   // risk band (x2 score, slow drain)
   const PW = 30, PH = 32;               // player hitbox
-  const ACC = 0.85, FRICT = 0.85, VMAX = 6.0;
-  const DASH_CD = 110, DASH_IFRAMES = 14, DASH_KICK = 6.0, DASH_VMAX = 10.0;
+  const ACC = 1.25, FRICT = 0.80, VMAX = 7.2, STOP = 0.06;
+  const DASH_CD = 100, DASH_IFRAMES = 15, DASH_KICK = 7.0, DASH_VMAX = 11.0;
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function aabb(px, py, h) { return px + PW > h.x && px < h.x + h.w && py + PH > h.y && py < h.y + h.h; }
@@ -68,21 +69,27 @@
 
   // Pure deterministic step. mask bits: 1=left 2=right 4=up 8=down 16=dash.
   // Returns a cosmetic-only event bitfield (not hashed):
-  //   1=raw 2=artifact 4=vault 8=gate 16=near-miss 32=dash 64=surge-start
+  //   1=raw 2=artifact 4=vault 8=gate 16=near-miss 32=dash 64=surge 128=purge
   function stepSim(s, mask) {
     if (s.over) return 0;
     s.tick++;
     s.inputLog.push(mask & 31);
     let ev = 0;
 
+    // --- snappy movement: full acceleration, friction only decays idle axes ---
     let ax = 0, ay = 0;
-    if (mask & 1) ax -= ACC;
-    if (mask & 2) ax += ACC;
-    if (mask & 4) ay -= ACC;
-    if (mask & 8) ay += ACC;
-    s.vx = clamp((s.vx + ax) * FRICT, -VMAX, VMAX);
-    s.vy = clamp((s.vy + ay) * FRICT, -VMAX, VMAX);
+    if (mask & 1) ax -= 1;
+    if (mask & 2) ax += 1;
+    if (mask & 4) ay -= 1;
+    if (mask & 8) ay += 1;
+    s.vx += ax * ACC;
+    s.vy += ay * ACC;
+    if (ax === 0) { s.vx *= FRICT; if (Math.abs(s.vx) < STOP) s.vx = 0; }
+    if (ay === 0) { s.vy *= FRICT; if (Math.abs(s.vy) < STOP) s.vy = 0; }
+    s.vx = clamp(s.vx, -VMAX, VMAX);
+    s.vy = clamp(s.vy, -VMAX, VMAX);
 
+    // --- dash: burst + brief i-frames on a cooldown ---
     if (s.dashCd > 0) s.dashCd--;
     if (s.iframes > 0) s.iframes--;
     if ((mask & 16) && s.dashCd <= 0) {
@@ -115,7 +122,7 @@
     if (s.consent === "Granted") {
       if (inAudit) s.integrity = Math.min(100, s.integrity + 0.10);
       if (inFast) s.integrity = Math.max(0, s.integrity - 0.04);
-      s.score += speed * 0.10 * s.mult;
+      s.score += speed * 0.10 * s.mult * (surge ? 1.5 : 1);
     }
 
     for (const h of s.hazards) {
@@ -130,7 +137,10 @@
         if (h.type === "vault") {
           if (s.consent === "Granted") { s.integrity = Math.min(100, s.integrity + 12); s.combo++; if (s.combo > s.bestCombo) s.bestCombo = s.combo; s.score += 50 + s.combo * 8; ev |= 4; }
         } else if (s.iframes > 0) {
-          /* dashing through a hazard: phased, no damage */
+          // dashing THROUGH a threat purges it for score and keeps the combo
+          if (h.type === "raw") { s.score += 22 * s.mult; ev |= 128; }
+          else if (h.type === "artifact") { s.score += 11 * s.mult; ev |= 128; }
+          /* gate: phase through harmlessly */
         } else if (h.type === "raw") { s.integrity -= 18; s.combo = 0; ev |= 1; }
         else if (h.type === "artifact") { s.integrity -= 7; s.combo = 0; ev |= 2; }
         else if (h.type === "gate") { if (s.consent !== "Withdrawn") { s.consent = "Suspended"; s.suspend = 180; ev |= 8; } }
@@ -169,6 +179,7 @@
   }
 
   /* ===================== browser wiring (cinematic render) ===================== */
+  const TAU = Math.PI * 2;
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const ui = {
@@ -183,26 +194,37 @@
   const STEP = 1000 / 60;
   const HZ = { artifact: "#b98bff", raw: "#ff5d78", gate: "#9aa6b4", vault: "#f0c869" };
 
+  // separate cosmetic RNG — keeps sim.rng untouched, removes Math.random entirely
+  const cos = { rng: 0x9e3779b9 };
+  function crand() { return rnd(cos); }
+  function makeStars(seed) {
+    const c = { rng: (seed ^ 0x57A45) >>> 0 };
+    const a = [];
+    for (let i = 0; i < 84; i++) a.push({ x: rnd(c) * W, y: FIELD_TOP + rnd(c) * (FIELD_BOT - FIELD_TOP), z: 0.3 + rnd(c) * 1.5, s: rnd(c) * 1.7 + 0.4 });
+    return a;
+  }
+
   let sim = newSim(dailySeed());
   let keys = new Set();
   let paused = false, colorblind = false, started = false;
   let acc = 0, last = 0, rafT = 0;
-  let particles = [], shake = 0, messages = [], codexUnlocked = false, flash = 0;
-  let stars = makeStars();
+  let particles = [], shake = 0, messages = [], codexUnlocked = false, flash = 0, intro = 1;
+  let stars = makeStars(sim.seed);
 
   function dailySeed() {
     const d = new Date();
     return (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) ^ 0xB0A5D52) >>> 0;
   }
   function weatherFor(s) { return weatherNames[(s.seed + Math.floor(s.tick / 720)) % weatherNames.length]; }
-  function makeStars() { const a = []; for (let i = 0; i < 70; i++) a.push({ x: Math.random() * W, y: FIELD_TOP + Math.random() * (FIELD_BOT - FIELD_TOP), z: 0.3 + Math.random() * 1.4, s: Math.random() * 1.6 + 0.4 }); return a; }
   function rr(x, y, w, h, r) { if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); } else { ctx.beginPath(); ctx.rect(x, y, w, h); } }
 
   function announce(msg) { messages.unshift({ msg, ttl: 210 }); messages = messages.slice(0, 4); if (ui.live) ui.live.textContent = msg; }
 
   function reset() {
     sim = newSim(dailySeed());
-    particles = []; shake = 0; flash = 0; messages = []; codexUnlocked = false;
+    cos.rng = (sim.seed ^ 0x57A45) >>> 0;
+    stars = makeStars(sim.seed);
+    particles = []; shake = 0; flash = 0; messages = []; codexUnlocked = false; intro = 0.6;
     paused = false; started = true; acc = 0; last = performance.now();
     if (ui.codex) ui.codex.textContent = "Reach 600 distance to unlock the Consent State Machine entry.";
     announce("Signal online. Dodge red Raw-Signal zones, grab gold Vaults, dash through danger with Shift.");
@@ -210,19 +232,21 @@
 
   function burst(x, y, color, n, spread, glow) {
     spread = spread || 7;
-    for (let i = 0; i < n; i++) particles.push({ x, y, color, glow: !!glow, vx: (Math.random() - 0.5) * spread, vy: (Math.random() - 0.5) * spread - 2, life: 26 + Math.random() * 20, size: 2 + Math.random() * 3 });
-    if (particles.length > 320) particles = particles.slice(-320);
+    for (let i = 0; i < n; i++) particles.push({ x, y, color, glow: !!glow, vx: (crand() - 0.5) * spread, vy: (crand() - 0.5) * spread - 2, life: 26 + crand() * 20, size: 2 + crand() * 3 });
+    if (particles.length > 340) particles = particles.slice(-340);
   }
+  function ring(x, y, color) { particles.push({ ringR: 6, ringMax: 46, color, ring: true, x, y, life: 22, size: 0 }); }
 
   function react(ev) {
     const px = sim.x + PW / 2, py = sim.y + PH / 2;
-    if (ev & 32) burst(px, py, "#7af0ff", 18, 11, true);
+    if (ev & 32) { burst(px, py, "#7af0ff", 18, 11, true); ring(px, py, "#7af0ff"); }
+    if (ev & 128) { burst(px, py, "#ffd0dc", 16, 9, true); ring(px, py, "#ff8ba0"); announce("Threat purged mid-dash. Combo held."); }
     if (ev & 1) { burst(px, py, "#ff5d78", 22, 9, true); shake = 13; flash = 0.5; announce("Raw Signal Zone: structural-privacy violation. Integrity -18, combo lost."); }
     if (ev & 2) { burst(px, py, "#b98bff", 11, 7, true); shake = 6; announce("Artifact spike: intent fidelity degraded. Integrity -7."); }
     if (ev & 4) { burst(px, py, "#f0c869", 18, 7, true); announce("Sealed Vault +12 integrity. Combo " + sim.combo + " (x" + (1 + Math.floor(sim.combo / 5)) + " streak)."); }
     if (ev & 8) { burst(px, py, "#aab4c0", 11, 6, false); announce("Stale consent gate: suspended ~3s, scoring paused, auto-resume."); }
     if (ev & 16) burst(px, py, "#9bffb0", 7, 5, true);
-    if (ev & 64) { announce("Surge wave incoming — denser, faster, drifting hazards. Hold the line."); shake = Math.max(shake, 7); }
+    if (ev & 64) { announce("Surge wave: denser, faster, drifting hazards — but +50% score. Hold the line."); shake = Math.max(shake, 7); }
   }
 
   function inputMask() {
@@ -291,8 +315,9 @@
   /* ---------- render ---------- */
   function draw() {
     const t = rafT;
-    const sx = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    const sy = shake > 0 ? (Math.random() - 0.5) * shake : 0;
+    if (intro > 0) intro = Math.max(0, intro - 0.02);
+    const sx = shake > 0 ? (crand() - 0.5) * shake : 0;
+    const sy = shake > 0 ? (crand() - 0.5) * shake : 0;
     if (shake > 0) shake *= 0.85;
     ctx.save();
     ctx.translate(sx, sy);
@@ -302,15 +327,15 @@
     g.addColorStop(0, "#0b1a30"); g.addColorStop(0.55, "#07101e"); g.addColorStop(1, "#020308");
     ctx.fillStyle = g; ctx.fillRect(-26, -26, W + 52, H + 52);
 
-    // parallax starfield + scrolling grid
+    // parallax starfield + scrolling depth grid
     ctx.globalCompositeOperation = "lighter";
     for (const st of stars) {
       const x = ((st.x - sim.distance * st.z * 0.25) % W + W) % W;
-      ctx.globalAlpha = 0.10 + 0.10 * st.z;
+      ctx.globalAlpha = 0.08 + 0.10 * st.z;
       ctx.fillStyle = "#8fb6ff"; ctx.fillRect(x, st.y, st.s, st.s);
     }
     ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = 0.14;
+    ctx.globalAlpha = 0.13;
     const off = (sim.distance % 40);
     ctx.strokeStyle = "#5e92ff"; ctx.lineWidth = 1;
     for (let x = -off; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, FIELD_TOP); ctx.lineTo(x - 18, FIELD_BOT); ctx.stroke(); }
@@ -321,32 +346,24 @@
 
     for (const h of sim.hazards) drawHazard(h, t);
 
-    // player with glow + thruster trail
-    const px = sim.x, py = sim.y, dashing = sim.iframes > 0;
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.5;
-    for (let i = 1; i <= 5; i++) { ctx.fillStyle = dashing ? "#7af0ff" : "#3aa0ff"; ctx.fillRect(px - i * 7, py + 6, 6, PH - 12); ctx.globalAlpha *= 0.6; }
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-    ctx.save();
-    ctx.shadowColor = dashing ? "#7af0ff" : "#9fe6ff"; ctx.shadowBlur = dashing ? 26 : 14;
-    const bg = ctx.createLinearGradient(px, py, px, py + PH);
-    bg.addColorStop(0, dashing ? "#dffaff" : "#eaf6ff"); bg.addColorStop(1, dashing ? "#88e6ff" : (sim.consent === "Suspended" ? "#f4c76b" : "#bfe2ff"));
-    ctx.fillStyle = bg; rr(px, py, PW, PH, 7); ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2; rr(px, py, PW, PH, 7); ctx.stroke();
-    ctx.fillStyle = "#a7e6ff";
-    ctx.beginPath(); ctx.arc(px + PW / 2, py - 12 + Math.sin(t / 280) * 3, 5.5, 0, Math.PI * 2); ctx.fill();
+    drawPlayer(t);
 
-    // particles (additive glow)
+    // particles (additive glow + expanding rings)
     ctx.globalCompositeOperation = "lighter";
-    for (const p of particles) { ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 30)); ctx.fillStyle = p.color; if (p.glow) { ctx.shadowColor = p.color; ctx.shadowBlur = 8; } ctx.fillRect(p.x, p.y, p.size, p.size); ctx.shadowBlur = 0; }
+    for (const p of particles) {
+      if (p.ring) { ctx.globalAlpha = Math.max(0, p.life / 22) * 0.7; ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.ringR, 0, TAU); ctx.stroke(); continue; }
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 30)); ctx.fillStyle = p.color;
+      if (p.glow) { ctx.shadowColor = p.color; ctx.shadowBlur = 8; }
+      ctx.fillRect(p.x, p.y, p.size, p.size); ctx.shadowBlur = 0;
+    }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
 
-    // vignette
+    // vignette + hit flash + intro fade
     const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.75);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.45)");
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     if (flash > 0) { ctx.fillStyle = "rgba(255,80,110," + flash + ")"; ctx.fillRect(0, 0, W, H); flash *= 0.82; }
+    if (intro > 0) { ctx.fillStyle = "rgba(2,5,12," + intro + ")"; ctx.fillRect(0, 0, W, H); }
 
     drawHud(t);
 
@@ -363,6 +380,79 @@
     if (ui.integrity) ui.integrity.textContent = Math.max(0, Math.round(sim.integrity)) + "%";
     if (ui.consent) ui.consent.textContent = sim.consent;
     if (ui.weather) ui.weather.textContent = weatherFor(sim);
+  }
+
+  // detailed, directional "Sovereign Signal" avatar
+  function drawPlayer(t) {
+    const cx = sim.x + PW / 2, cy = sim.y + PH / 2;
+    const spd = Math.sqrt(sim.vx * sim.vx + sim.vy * sim.vy);
+    const tilt = clamp(sim.vy * 0.05, -0.5, 0.5) + clamp(sim.vx * 0.012, -0.18, 0.18);
+    const dashing = sim.iframes > 0;
+    const suspended = sim.consent === "Suspended";
+    const low = sim.integrity <= 25;
+    const hw = PW / 2, hh = PH / 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(tilt);
+
+    // thruster plume (rear)
+    ctx.globalCompositeOperation = "lighter";
+    const flame = 8 + spd * 2.4 + (dashing ? 16 : 0);
+    const fg = ctx.createLinearGradient(-hw - flame, 0, -hw + 2, 0);
+    fg.addColorStop(0, "rgba(122,240,255,0)"); fg.addColorStop(0.6, dashing ? "rgba(150,245,255,.7)" : "rgba(95,208,255,.55)"); fg.addColorStop(1, dashing ? "#dffaff" : "#9fe0ff");
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.moveTo(-hw + 2, -7); ctx.lineTo(-hw - flame, 0); ctx.lineTo(-hw + 2, 7); ctx.closePath(); ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+
+    // hull path (hexagonal craft, nose forward)
+    function hullPath() {
+      ctx.beginPath();
+      ctx.moveTo(hw + 3, 0);
+      ctx.lineTo(hw * 0.42, -hh);
+      ctx.lineTo(-hw * 0.66, -hh * 0.82);
+      ctx.lineTo(-hw, -hh * 0.28);
+      ctx.lineTo(-hw, hh * 0.28);
+      ctx.lineTo(-hw * 0.66, hh * 0.82);
+      ctx.lineTo(hw * 0.42, hh);
+      ctx.closePath();
+    }
+    const hull = ctx.createLinearGradient(0, -hh, 0, hh);
+    if (suspended) { hull.addColorStop(0, "#ffe6b0"); hull.addColorStop(1, "#d79a3e"); }
+    else if (dashing) { hull.addColorStop(0, "#eafdff"); hull.addColorStop(1, "#79e6ff"); }
+    else { hull.addColorStop(0, "#eaf6ff"); hull.addColorStop(0.55, "#bfe2ff"); hull.addColorStop(1, "#6fa8e8"); }
+    ctx.save();
+    ctx.shadowColor = dashing ? "#7af0ff" : suspended ? "#f4c76b" : "#8fd6ff";
+    ctx.shadowBlur = dashing ? 28 : 16;
+    hullPath(); ctx.fillStyle = hull; ctx.fill();
+    ctx.restore();
+    // low-integrity warning rim
+    hullPath();
+    ctx.strokeStyle = low ? ("rgba(255,90,110," + (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t / 90))) + ")") : "rgba(255,255,255,.92)";
+    ctx.lineWidth = low ? 2.4 : 1.6; ctx.stroke();
+
+    // panel line
+    ctx.strokeStyle = "rgba(20,60,110,.4)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-hw * 0.5, -hh * 0.45); ctx.lineTo(hw * 0.5, 0); ctx.lineTo(-hw * 0.5, hh * 0.45); ctx.stroke();
+
+    // neural core (pulsing)
+    const pulse = 0.6 + 0.4 * Math.sin(t / 170);
+    ctx.save();
+    ctx.shadowColor = suspended ? "#ffd27a" : "#aef0ff"; ctx.shadowBlur = 12;
+    const core = ctx.createRadialGradient(-1, 0, 0, -1, 0, 6 + pulse * 2);
+    core.addColorStop(0, "#ffffff"); core.addColorStop(0.6, suspended ? "#ffcf7a" : "#bfecff"); core.addColorStop(1, "rgba(120,220,255,0)");
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(-1, 0, 6 + pulse * 2, 0, TAU); ctx.fill();
+    ctx.restore();
+    // sensor tip
+    ctx.fillStyle = "#d6f4ff"; ctx.beginPath(); ctx.arc(hw * 0.78, 0, 1.8, 0, TAU); ctx.fill();
+
+    // dash shield ring
+    if (dashing) {
+      const a = sim.iframes / DASH_IFRAMES;
+      ctx.strokeStyle = "rgba(122,240,255," + (0.3 + 0.5 * a) + ")"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, hw * 1.5, t / 50, t / 50 + Math.PI * 1.5); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawBand(band, rgba, label, t, stripe) {
@@ -386,17 +476,16 @@
     if (h.type === "gate") { rr(h.x, h.y, h.w, h.h, 4); ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1; rr(h.x + 4, h.y + 4, h.w - 8, h.h - 8, 3); ctx.stroke(); }
     else if (h.type === "vault") { rr(h.x, h.y, h.w, h.h, 5); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = "rgba(0,0,0,.42)"; ctx.fillRect(h.x + h.w / 2 - 2, h.y + h.h / 2 - 5, 4, 10); ctx.beginPath(); ctx.arc(h.x + h.w / 2, h.y + h.h / 2 - 6, 4, Math.PI, 0); ctx.lineWidth = 2; ctx.strokeStyle = "rgba(0,0,0,.42)"; ctx.stroke(); }
     else if (h.type === "raw") { ctx.beginPath(); ctx.moveTo(h.x, h.y + h.h); ctx.lineTo(h.x + h.w / 2, h.y); ctx.lineTo(h.x + h.w, h.y + h.h); ctx.closePath(); ctx.fill(); }
-    else { ctx.beginPath(); ctx.arc(h.x + h.w / 2, h.y + h.h / 2, Math.min(h.w, h.h) / 2, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.arc(h.x + h.w / 2, h.y + h.h / 2, Math.min(h.w, h.h) / 2, 0, TAU); ctx.fill(); }
     ctx.restore();
     if (colorblind) { ctx.fillStyle = "#fff"; ctx.font = "700 9px ui-sans-serif"; ctx.textAlign = "center"; ctx.fillText(h.type[0].toUpperCase(), h.x + h.w / 2, h.y - 4); ctx.textAlign = "left"; }
   }
 
   function drawHud(t) {
     ctx.save();
-    ctx.fillStyle = "rgba(4,9,18,.62)"; rr(0, 0, W, 50, 0); ctx.fill();
+    ctx.fillStyle = "rgba(4,9,18,.62)"; ctx.fillRect(0, 0, W, 50);
     ctx.fillStyle = "rgba(122,240,255,.25)"; ctx.fillRect(0, 50, W, 1);
     ctx.textAlign = "left";
-    // AxonOS mark
     ctx.fillStyle = "#36d6a0"; ctx.font = "800 13px ui-sans-serif"; ctx.fillText("AXON", 20, 31);
     ctx.fillStyle = "#f0c869"; ctx.fillText("OS", 60, 31);
     ctx.fillStyle = "#f4f7fb"; ctx.font = "700 18px ui-sans-serif"; ctx.fillText(String(Math.floor(sim.score)).padStart(5, "0"), 96, 32);
@@ -407,7 +496,6 @@
     if (sim.mult > 1) { ctx.fillStyle = "#ffd479"; ctx.fillText("x2", 380, 31); }
     ctx.fillStyle = sim.dashCd <= 0 ? "#7af0ff" : "rgba(122,240,255,.32)";
     ctx.fillText(sim.dashCd <= 0 ? "DASH \u25c8" : "dash \u25c7", 420, 31);
-    // integrity bar
     const bx = W - 232, bw = 212;
     ctx.fillStyle = "rgba(255,255,255,.14)"; rr(bx, 17, bw, 16, 8); ctx.fill();
     const ig = Math.max(0, Math.min(1, sim.integrity / 100));
@@ -441,7 +529,7 @@
     acc += dt;
     let steps = 0;
     while (acc >= STEP && steps < 6) { tickLogic(); acc -= STEP; steps++; }
-    for (const p of particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life--; }
+    for (const p of particles) { if (p.ring) { p.ringR += (p.ringMax - p.ringR) * 0.2; p.life--; continue; } p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life--; }
     particles = particles.filter(p => p.life > 0);
     for (const m of messages) m.ttl--;
     messages = messages.filter(m => m.ttl > 0);
@@ -504,8 +592,8 @@
     keys.delete("ArrowLeft"); keys.delete("ArrowRight"); keys.delete("ArrowUp"); keys.delete("ArrowDown"); keys.delete("KeyK");
     if (!touching) return;
     const cx = sim.x + PW / 2, cy = sim.y + PH / 2;
-    if (tx < cx - 12) keys.add("ArrowLeft"); else if (tx > cx + 12) keys.add("ArrowRight");
-    if (ty < cy - 12) keys.add("ArrowUp"); else if (ty > cy + 12) keys.add("ArrowDown");
+    if (tx < cx - 10) keys.add("ArrowLeft"); else if (tx > cx + 10) keys.add("ArrowRight");
+    if (ty < cy - 10) keys.add("ArrowUp"); else if (ty > cy + 10) keys.add("ArrowDown");
     if (dashTouch) keys.add("KeyK");
   }
   stage.addEventListener("touchstart", e => { e.preventDefault(); touching = true; if (!started || sim.over) reset(); touchPos(e); }, { passive: false });

@@ -5,8 +5,8 @@
 #
 # Faithful Python port of the deterministic gameplay core in src/game.js.
 # Re-runs an exported proof's input log from its seed and confirms the canonical
-# SHA-256 hash matches proof["hash"]. Same seed + same input log => same hash,
-# in a different language. That is the guarantee behind "deterministic replay".
+# SHA-256 hash matches proof["hash"]. Same seed + same input log => same hash, in
+# a different language. Exact IEEE-754 arithmetic only (no transcendentals).
 import argparse, json, hashlib, math, sys
 
 W = 960
@@ -14,8 +14,8 @@ FIELD_TOP, FIELD_BOT = 66, 540 - 16
 AUDIT0, AUDIT1 = 318, 398
 FAST0, FAST1 = 92, 172
 PW, PH = 30, 32
-ACC, FRICT, VMAX = 0.85, 0.85, 6.0
-DASH_CD, DASH_IFRAMES, DASH_KICK, DASH_VMAX = 110, 14, 6.0, 10.0
+ACC, FRICT, VMAX, STOP = 1.25, 0.80, 7.2, 0.06
+DASH_CD, DASH_IFRAMES, DASH_KICK, DASH_VMAX = 100, 15, 7.0, 11.0
 M32 = 0xFFFFFFFF
 
 def imul(a, b): return (a * b) & M32
@@ -59,13 +59,23 @@ def step_sim(s, mask):
         return
     s["tick"] += 1
     s["inputLog"].append(mask & 31)
-    ax = ay = 0.0
-    if mask & 1: ax -= ACC
-    if mask & 2: ax += ACC
-    if mask & 4: ay -= ACC
-    if mask & 8: ay += ACC
-    s["vx"] = clamp((s["vx"] + ax) * FRICT, -VMAX, VMAX)
-    s["vy"] = clamp((s["vy"] + ay) * FRICT, -VMAX, VMAX)
+
+    ax = 0.0; ay = 0.0
+    if mask & 1: ax -= 1
+    if mask & 2: ax += 1
+    if mask & 4: ay -= 1
+    if mask & 8: ay += 1
+    s["vx"] += ax * ACC
+    s["vy"] += ay * ACC
+    if ax == 0:
+        s["vx"] *= FRICT
+        if abs(s["vx"]) < STOP: s["vx"] = 0.0
+    if ay == 0:
+        s["vy"] *= FRICT
+        if abs(s["vy"]) < STOP: s["vy"] = 0.0
+    s["vx"] = clamp(s["vx"], -VMAX, VMAX)
+    s["vy"] = clamp(s["vy"], -VMAX, VMAX)
+
     if s["dashCd"] > 0: s["dashCd"] -= 1
     if s["iframes"] > 0: s["iframes"] -= 1
     if (mask & 16) and s["dashCd"] <= 0:
@@ -75,17 +85,21 @@ def step_sim(s, mask):
         if dx == 0 and dy == 0: dx = 1
         s["vx"] = clamp(s["vx"] + dx * DASH_KICK, -DASH_VMAX, DASH_VMAX)
         s["vy"] = clamp(s["vy"] + dy * DASH_KICK, -DASH_VMAX, DASH_VMAX)
+
     s["x"] = clamp(s["x"] + s["vx"], 22, W * 0.6)
     s["y"] = clamp(s["y"] + s["vy"], FIELD_TOP + 2, FIELD_BOT - PH)
     for v in (s["x"], s["y"], s["vx"], s["vy"]):
         if not math.isfinite(v):
             s["over"] = True; s["consent"] = "Withdrawn"; return
+
     if s["suspend"] > 0:
         s["suspend"] -= 1
         if s["suspend"] == 0 and s["consent"] == "Suspended": s["consent"] = "Granted"
+
     surge = (s["tick"] % 1500) < 240
     speed = (2.6 + min(3.4, s["tick"] / 2400)) * (1.35 if surge else 1)
     s["distance"] += speed
+
     cy = s["y"] + PH / 2
     in_audit = AUDIT0 <= cy <= AUDIT1
     in_fast = FAST0 <= cy <= FAST1
@@ -93,7 +107,8 @@ def step_sim(s, mask):
     if s["consent"] == "Granted":
         if in_audit: s["integrity"] = min(100, s["integrity"] + 0.10)
         if in_fast: s["integrity"] = max(0, s["integrity"] - 0.04)
-        s["score"] += speed * 0.10 * s["mult"]
+        s["score"] += speed * 0.10 * s["mult"] * (1.5 if surge else 1)
+
     for h in s["hazards"]:
         h["x"] -= speed
         h["y"] += h["vy"]
@@ -101,6 +116,7 @@ def step_sim(s, mask):
             h["y"] = FIELD_TOP + 4; h["vy"] = -h["vy"]
         elif h["y"] > FIELD_BOT - h["h"] - 4:
             h["y"] = FIELD_BOT - h["h"] - 4; h["vy"] = -h["vy"]
+
         if not h["hit"] and aabb(s["x"], s["y"], h):
             h["hit"] = True
             if h["type"] == "vault":
@@ -109,7 +125,9 @@ def step_sim(s, mask):
                     if s["combo"] > s["bestCombo"]: s["bestCombo"] = s["combo"]
                     s["score"] += 50 + s["combo"] * 8
             elif s["iframes"] > 0:
-                pass
+                if h["type"] == "raw": s["score"] += 22 * s["mult"]
+                elif h["type"] == "artifact": s["score"] += 11 * s["mult"]
+                # gate: phase through harmlessly
             elif h["type"] == "raw":
                 s["integrity"] -= 18; s["combo"] = 0
             elif h["type"] == "artifact":
@@ -122,11 +140,13 @@ def step_sim(s, mask):
             if (h["type"] == "raw" or h["type"] == "artifact") and s["consent"] == "Granted":
                 gap = min(abs((h["y"] + h["h"]) - s["y"]), abs(h["y"] - (s["y"] + PH)))
                 if gap < 16: s["score"] += 12 * s["mult"]
+
     s["hazards"] = [h for h in s["hazards"] if h["x"] + h["w"] > -24]
     s["spawnIn"] -= speed
     if s["spawnIn"] <= 0:
         s["hazards"].append(make_hazard(s, W + 30 + rnd(s) * 70))
         s["spawnIn"] = (78 if surge else 165) + rnd(s) * 120 - min(95, s["tick"] / 38)
+
     if s["integrity"] <= 0 and not s["over"]:
         s["integrity"] = 0; s["over"] = True; s["consent"] = "Withdrawn"
 
