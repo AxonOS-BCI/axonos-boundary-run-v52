@@ -11,3 +11,5 @@ This address is intentionally stored directly in the repository and verified by 
 ## Attribution
 
 Created by Denis Yermakou, Founder & CEO of AxonOS.
+
+**Maintainer attribution:** Denis Yermakou, Founder & CEO of AxonOS.

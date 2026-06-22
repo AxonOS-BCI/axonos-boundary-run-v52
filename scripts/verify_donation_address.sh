@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Created by Denis Yermakou, Founder & CEO of AxonOS.
 set -euo pipefail
 EXPECTED="DMwHAhqVNWf7dyEznukxCufNS5rjuP5MTp"
 for f in README.md DONATIONS.md index.html; do

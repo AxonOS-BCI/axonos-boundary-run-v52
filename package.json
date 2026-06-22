@@ -17,13 +17,13 @@
   "description": "AxonOS Boundary Run v52 — zero-telemetry cognitive privacy simulator created by Denis Yermakou.",
   "author": {
     "name": "Denis Yermakou",
-    "email": "wiser1707@gmail.com",
+    "email": "connect@axonos.org",
     "url": "https://axonos.org"
   },
   "contributors": [
     {
       "name": "Denis Yermakou",
-      "email": "wiser1707@gmail.com",
+      "email": "connect@axonos.org",
       "url": "https://axonos.org"
     }
   ],
@@ -35,7 +35,7 @@
   "bugs": {
     "url": "https://github.com/AxonOS-BCI/axonos-boundary-run-v52/issues"
   },
-  "license": "AGPL-3.0-only OR AxonOS-Commercial",
+  "license": "AGPL-3.0-only OR LicenseRef-AxonOS-Commercial",
   "keywords": [
     "AxonOS",
     "BCI",

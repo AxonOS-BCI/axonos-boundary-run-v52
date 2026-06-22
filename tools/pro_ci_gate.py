@@ -45,8 +45,12 @@ def gate(name: str):
     elif name == "no_service_worker": run(["bash", "scripts/verify_no_sw.sh"])
     elif name == "no_telemetry": no_forbidden_network()
     elif name == "no_external_cdn":
+        # Forbid external resource LOADS (CDN), not metadata URLs (og:url, JSON-LD @context, nav links).
+        cdn = [r"<script[^>]+src=[\"']https?:", r"<link[^>]+href=[\"']https?:", r"@import[^;]*https?:", r"url\(\s*[\"']?https?:"]
         for path in ["index.html", "src/game.js", "src/styles.css"]:
-            if re.search(r"https?://", read(path)): raise SystemExit(f"external URL in {path}")
+            data = read(path)
+            for pat in cdn:
+                if re.search(pat, data): raise SystemExit(f"external resource load in {path}")
     elif name == "csp_present": contains("index.html", "Content-Security-Policy")
     elif name == "referrer_policy": contains("index.html", "no-referrer")
     elif name == "safe_release_script": safe_release()
