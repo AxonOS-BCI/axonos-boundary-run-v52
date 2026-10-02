@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/replay-deterministic%20%C2%B7%20SHA--256%20verified-2ea44f" alt="Deterministic replay proof" />
   <img src="https://img.shields.io/badge/telemetry-none-555" alt="Zero telemetry" />
   <img src="https://img.shields.io/badge/runtime-offline%20%C2%B7%20no%20CDN-555" alt="Offline, no CDN" />
+  <a href="https://axonos-bci.github.io/axonos-community-radar/"><img alt="AxonOS Radar" src="https://img.shields.io/badge/AxonOS%20Radar-open%20neurotech%20map-1f8fae?labelColor=0b1220"></a>
 </p>
 
 <p align="center">
