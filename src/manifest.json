@@ -1,0 +1,13 @@
+{
+  "name": "AxonOS Boundary Run v52 \u2014 The Sovereign Signal",
+  "short_name": "Boundary Run v52",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "description": "Zero-telemetry cognitive privacy simulator created by Denis Yermakou.",
+  "author": "Denis Yermakou",
+  "creator": "Denis Yermakou",
+  "homepage_url": "https://axonos-bci.github.io/axonos-boundary-run-v52/",
+  "id": "/axonos-boundary-run-v52/"
+}
